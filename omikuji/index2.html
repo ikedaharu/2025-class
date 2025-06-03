@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ダイアル回転式おみくじ App</title>
+  <style>
+    body {
+      text-align: center;
+      padding: 50px;
+      background-color: #f0f8ff;
+    }
+    
+    h1 {
+      margin: 0;
+    }
+
+    .container {
+      background: white;
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px #aaa;
+      display: inline-block;
+    }
+
+    button {
+      padding: 10px 20px;
+      font-size: 18px;
+      background: #ffcc00;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      margin-top: 20px;
+    }
+
+    /*ここから大改造中*/
+    /* ダイアル表示エリア */
+    .dial-container {
+      height: 80px;
+      overflow: hidden;
+      border: 3px solid #333;
+      border-radius: 10px;
+      margin: 20px 0;
+      position: relative;
+      background: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* ダイアルの回転部分 */
+    .dial {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      position: relative;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    .dial.visible {
+      opacity: 1;
+    }
+
+    .dial.spinning {
+      transition: transform 3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    }
+
+    /* 各運勢項目 */
+    .fortune-item {
+      height: 80px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 32px;
+      font-weight: bold;
+      min-width: 200px;
+      flex-shrink: 0;
+    }
+
+    /* 運勢ごとの色分け */
+    .fortune-item[data-fortune="大吉"] { color: #e74c3c; }
+    .fortune-item[data-fortune="吉"] { color: #f39c12; }
+    .fortune-item[data-fortune="中吉"] { color: #f1c40f; }
+    .fortune-item[data-fortune="小吉"] { color: #27ae60; }
+    .fortune-item[data-fortune="末吉"] { color: #3498db; }
+    .fortune-item[data-fortune="凶"] { color: #9b59b6; }
+    .fortune-item[data-fortune="大凶"] { color: #2c3e50; }
+
+    /* 選択された項目を示すフレーム */
+    .selection-frame {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      border: 5px solid #ff6b6b;
+      border-radius: 7px;
+      pointer-events: none;
+      box-shadow: inset 0 0 20px rgba(255, 107, 107, 0.3);
+    }
+
+    /* 結果表示 */
+    .result-text {
+      margin-top: 20px;
+      font-size: 20px;
+      font-weight: bold;
+      min-height: 30px;
+    }
+
+    /* デバッグ情報 */
+    .debug-info {
+      font-size: 12px;
+      color: #666;
+      margin-top: 10px;
+    }
+
+    /* ボタンの無効化時のスタイル */
+    button:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🎰 ダイアル式おみくじアプリ</h1>
+    
+    <div class="dial-container">
+      <div class="selection-frame"></div>
+      <div class="dial" id="dial">
+        <!-- 運勢項目は JavaScript で生成 -->
+      </div>
+    </div>
+    
+    <div class="result-text" id="result">ボタンを押しておみくじを引いてください</div>
+    <div class="debug-info" id="debug"></div>
+    <button id="draw">🎯 おみくじを引く</button>
+  </div>
+
+  <script>
+    const omikujiResults = ['大吉', '吉', '中吉', '小吉', '末吉', '凶', '大凶'];
+    const dial = document.getElementById('dial');
+    const resultElement = document.getElementById('result');
+    const debugElement = document.getElementById('debug');
+    const drawButton = document.getElementById('draw');
+    let isFirstDraw = true;
+
+    // ダイアルの初期化
+    function initializeDial() {
+      dial.innerHTML = '';
+      
+      // 回転演出のために運勢を少なめに繰り返し表示（デバッグのため）
+      const repeats = 5;
+      for (let r = 0; r < repeats; r++) {
+        omikujiResults.forEach((fortune, index) => {
+          const item = document.createElement('div');
+          item.className = 'fortune-item';
+          item.setAttribute('data-fortune', fortune);
+          item.textContent = fortune;
+          item.setAttribute('data-index', r * omikujiResults.length + index); // デバッグ用
+          dial.appendChild(item);
+        });
+      }
+      
+      // 初期位置を必ず0に設定
+      dial.style.transform = 'translateY(0px)';
+      updateDebugInfo('初期化完了', 0);
+    }
+
+    // デバッグ情報を更新
+    function updateDebugInfo(action, position) {
+      debugElement.textContent = `${action}: 位置 ${position}px`;
+    }
+
+    // おみくじを引く処理
+    drawButton.addEventListener('click', function() {
+      if (isFirstDraw) {
+        // 初回：ダイアルを表示してボタンを隠す
+        dial.classList.add('visible');
+        drawButton.style.display = 'none';
+        isFirstDraw = false;
+        
+        // 少し待ってからアニメーション開始
+        setTimeout(() => {
+          startDrawing();
+        }, 500);
+      } else {
+        // 引き直し：まず初期位置にリセット
+        resetDialPosition();
+        setTimeout(() => {
+          startDrawing();
+        }, 100);
+      }
+    });
+
+    // ダイアル位置をリセット
+    function resetDialPosition() {
+      dial.classList.remove('spinning');
+      dial.style.transform = 'translateY(0px)';
+      updateDebugInfo('位置リセット', 0);
+    }
+
+    function startDrawing() {
+      // ボタンを無効化
+      drawButton.disabled = true;
+      resultElement.textContent = '運勢を占い中...';
+      
+      // ランダムな結果を選択
+      const selectedFortune = omikujiResults[Math.floor(Math.random() * omikujiResults.length)];
+      updateDebugInfo('選択された運勢', selectedFortune);
+      
+      // 回転アニメーション開始
+      startSpinAnimation(selectedFortune);
+    }
+
+    function startSpinAnimation(targetFortune) {
+      // 安全な位置計算
+      const itemHeight = 80;
+      const totalSets = 5;
+      
+      // 最後のセット（4番目、0から数えて）の目標運勢を選択
+      const targetSetIndex = 3; // 4番目のセット
+      const fortuneIndex = omikujiResults.indexOf(targetFortune);
+      const targetItemIndex = targetSetIndex * omikujiResults.length + fortuneIndex;
+      
+         // 最終位置を計算（ダイアル中央に目標運勢が来るように）
+      const finalPosition = -(targetItemIndex * itemHeight);
+      
+      updateDebugInfo(`回転開始 - 目標: ${targetFortune}`, finalPosition);
+      
+      // アニメーション開始
+      setTimeout(() => {
+        dial.classList.add('spinning');
+        dial.style.transform = `translateY(${finalPosition}px)`;
+        
+        // アニメーション終了後の処理
+        setTimeout(() => {
+          dial.classList.remove('spinning');
+          drawButton.disabled = false;
+          drawButton.style.display = 'inline-block';
+          drawButton.textContent = '🔄 引き直す';
+          resultElement.textContent = `あなたの運勢は「${targetFortune}」です！`;
+          
+          // 結果に応じた色を適用
+          resultElement.style.color = getFortuneColor(targetFortune);
+          updateDebugInfo('アニメーション完了', finalPosition);
+        }, 3000);
+      }, 100);
+    }
+
+    // 運勢に応じた色を取得
+    function getFortuneColor(fortune) {
+      const colors = {
+        '大吉': '#e74c3c',
+        '吉': '#f39c12',
+        '中吉': '#f1c40f',
+        '小吉': '#27ae60',
+        '末吉': '#3498db',
+        '凶': '#9b59b6',
+        '大凶': '#2c3e50'
+      };
+      return colors[fortune] || '#2c3e50';
+    }
+
+    // ページ読み込み時にダイアルを初期化（非表示状態で）
+    initializeDial();
+  </script>
+</body>
+</html>

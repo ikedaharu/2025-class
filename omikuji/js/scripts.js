@@ -6,9 +6,8 @@ document.getElementById('draw').addEventListener('click', function () {
     const resultElement = document.getElementById('result');
     
     document.getElementById('result').textContent = `あなたの運勢は... ${result}!`;
-});
 
-// 文字色を変更
+    // 文字色を変更
   switch (result) {
     case '大吉':
       resultElement.style.color = 'red';
@@ -32,5 +31,6 @@ document.getElementById('draw').addEventListener('click', function () {
       resultElement.style.color = 'black';
       break;
     default:
-      resultElement.style.color = 'black'; // デフォルトは黒
+      resultElement.style.color = 'black'; // デフォルトは黒として設定した
   }
+});

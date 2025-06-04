@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Click Number</title>
+    <meta charset="UTF-8" />
+    <style>
+        body {
+            font-family: sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            overflow: hidden;
+        }
+
+        #main {
+            position: relative;
+            width: 100%;
+            height: 100vh;
+        }
+
+        .circle {
+            background: linear-gradient(145deg, #4ecdc4, #44a08d);
+            border-radius: 50%;
+            height: 60px;
+            width: 60px;
+            font-size: 24px;
+            font-weight: bold;
+            color: white;
+            position: absolute;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .circle:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+        }
+
+        .circle:active {
+            transform: scale(0.95);
+        }
+
+        .square {
+            background-color: skyblue;
+            border: 30px;
+            height: 60px;
+            width: 60px;
+            font-size: 24px;
+            position: absolute;
+        }
+
+        .game-info {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            color: white;
+            font-size: 18px;
+            background: rgba(0,0,0,0.3);
+            padding: 15px;
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+        }
+
+        .next-number {
+            font-size: 24px;
+            font-weight: bold;
+            color: #4ecdc4;
+        }
+
+        .victory {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 48px;
+            font-weight: bold;
+            text-align: center;
+            background: rgba(0,0,0,0.5);
+            padding: 30px;
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+            display: none;
+        }
+
+        .start-screen {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            text-align: center;
+            background: rgba(0,0,0,0.7);
+            padding: 40px;
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+            max-width: 500px;
+        }
+
+        .start-screen h1 {
+            font-size: 36px;
+            margin-bottom: 20px;
+            color: #4ecdc4;
+        }
+
+        .rules {
+            font-size: 18px;
+            line-height: 1.6;
+            margin-bottom: 30px;
+            text-align: left;
+        }
+
+        .rules ul {
+            padding-left: 20px;
+        }
+
+        .rules li {
+            margin-bottom: 10px;
+        }
+
+        .restart-btn {
+            background: linear-gradient(145deg, #4ecdc4, #44a08d);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 18px;
+            border-radius: 25px;
+            cursor: pointer;
+            margin-top: 20px;
+            transition: all 0.3s ease;
+        }
+
+        .restart-btn:hover {
+            transform: scale(1.05);
+        }
+
+        .start-btn {
+            background: linear-gradient(145deg, #4ecdc4, #44a08d);
+            color: white;
+            border: none;
+            padding: 20px 40px;
+            font-size: 24px;
+            font-weight: bold;
+            border-radius: 30px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        }
+
+        .start-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.4);
+        }
+    </style>
+</head>
+<body>
+    <div class="start-screen" id="startScreen">
+        <h1>🎯 Click Number Game</h1>
+        <div class="rules">
+            <h3>ゲームルール:</h3>
+            <ul>
+                <li>画面に1〜9の数字ボタンが表示されます</li>
+                <li>数字を<strong>1から順番に</strong>クリックしてください</li>
+                <li>ボタンは5秒ごとにランダムな位置に移動します</li>
+                <li>間違った順番でクリックしても消えません</li>
+                <li>全ての数字を正しい順番でクリックするとクリア！</li>
+            </ul>
+        </div>
+        <button class="start-btn" onclick="startGame()">ゲーム開始</button>
+    </div>
+
+    <div class="game-info">
+        <div>次の番号: <span class="next-number" id="nextNumber">1</span></div>
+        <div>残り: <span id="remaining">9</span></div>
+    </div>
+    
+    <div class="victory" id="victory">
+        <div>🎉 完成！ 🎉</div>
+        <button class="restart-btn" onclick="restartGame()">もう一度</button>
+    </div>
+    
+    <div id="main"></div>
+
+    <script>
+        let next = 1;
+        let gameActive = false;
+        let moveInterval;
+
+        function startGame() {
+            document.getElementById("startScreen").style.display = "none";
+            gameActive = true;
+            createButtons();
+            updateUI();
+            move();
+            moveInterval = setInterval(move, 5000);
+        }
+
+        function createButtons() {
+            const main = document.getElementById("main");
+            main.innerHTML = ""; // Clear existing buttons
+            
+            for (let num = 9; num > 0; num--) {
+                const elm = document.createElement("button");
+                elm.innerHTML = num;
+                elm.setAttribute("id", num);
+                elm.setAttribute("class", "circle");
+                elm.onclick = () => remove(num);
+                main.appendChild(elm);
+            }
+        }
+
+        function remove(id) {
+            if (!gameActive) return;
+            
+            if (id === next) {
+                const element = document.getElementById(id);
+                element.style.transform = "scale(0)";
+                element.style.opacity = "0";
+                
+                setTimeout(() => {
+                    const main = document.getElementById("main");
+                    if (element && element.parentNode) {
+                        main.removeChild(element);
+                    }
+                }, 300);
+                
+                next = next + 1;
+                updateUI();
+                
+                if (next > 9) {
+                    gameActive = false;
+                    clearInterval(moveInterval);
+                    setTimeout(() => {
+                        document.getElementById("victory").style.display = "block";
+                    }, 500);
+                }
+            } else {
+                // Wrong number clicked - add shake effect
+                const element = document.getElementById(id);
+                element.style.background = "linear-gradient(145deg, #ff6b6b, #ee5a24)";
+                element.style.animation = "shake 0.5s ease-in-out";
+                
+                setTimeout(() => {
+                    element.style.background = "linear-gradient(145deg, #4ecdc4, #44a08d)";
+                    element.style.animation = "";
+                }, 500);
+            }
+        }
+
+        function updateUI() {
+            document.getElementById("nextNumber").textContent = next > 9 ? "完了" : next;
+            document.getElementById("remaining").textContent = Math.max(0, 10 - next);
+        }
+
+        function move() {
+            if (!gameActive) return;
+            
+            for (let num = 1; num < 10; num++) {
+                const element = document.getElementById(num);
+                if (!element) continue;
+                
+                const maxWidth = window.innerWidth - 80;
+                const maxHeight = window.innerHeight - 80;
+                
+                const left = 20 + Math.floor(Math.random() * maxWidth);
+                const top = 100 + Math.floor(Math.random() * (maxHeight - 100));
+                
+                element.style.left = left + "px";
+                element.style.top = top + "px";
+            }
+        }
+
+        function restartGame() {
+            next = 1;
+            gameActive = false;
+            clearInterval(moveInterval);
+            document.getElementById("victory").style.display = "none";
+            document.getElementById("main").innerHTML = "";
+            document.getElementById("startScreen").style.display = "block";
+            updateUI();
+        }
+
+        // Add shake animation
+        const style = document.createElement("style");
+        style.textContent = `
+            @keyframes shake {
+                0%, 100% { transform: translateX(0); }
+                25% { transform: translateX(-5px); }
+                75% { transform: translateX(5px); }
+            }
+        `;
+        document.head.appendChild(style);
+
+        // Initialize game - show start screen
+        updateUI();
+    </script>
+</body>
+</html>

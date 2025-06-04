@@ -63,7 +63,7 @@
     }
 
     .dial.spinning {
-      transition: transform 3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+      transition: transform 5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
     }
 
     /* 各運勢項目 */
@@ -120,6 +120,61 @@
       background: #ccc;
       cursor: not-allowed;
     }
+
+    /* 結果確定時の強調表示 */
+    .fortune-item.selected {
+      background: linear-gradient(45deg, #fff3cd, #ffeaa7);
+      border-radius: 5px;
+      box-shadow: 0 0 15px rgba(255, 193, 7, 0.5);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+      100% { transform: scale(1); }
+    }
+
+    /* 結果表示用のオーバーレイ */
+    .result-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(255, 255, 255, 0.95);
+      border-radius: 7px;
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.5s ease;
+      z-index: 10;
+    }
+
+    .result-overlay.show {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .result-overlay .fortune-display {
+      font-size: 36px;
+      font-weight: bold;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+      animation: fadeInScale 0.5s ease;
+    }
+
+    @keyframes fadeInScale {
+      0% { 
+        transform: scale(0.5);
+        opacity: 0;
+      }
+      100% { 
+        transform: scale(1);
+        opacity: 1;
+      }
+    }
   </style>
 </head>
 <body>
@@ -130,6 +185,9 @@
       <div class="selection-frame"></div>
       <div class="dial" id="dial">
         <!-- 運勢項目は JavaScript で生成 -->
+      </div>
+      <div class="result-overlay" id="resultOverlay">
+        <div class="fortune-display" id="fortuneDisplay"></div>
       </div>
     </div>
     
@@ -150,22 +208,23 @@
     function initializeDial() {
       dial.innerHTML = '';
       
-      // 回転演出のために運勢を少なめに繰り返し表示（デバッグのため）
-      const repeats = 5;
+      // 回転演出のために運勢を十分に繰り返し表示
+      const repeats = 8; // 繰り返し回数を増やして安全性を向上
       for (let r = 0; r < repeats; r++) {
         omikujiResults.forEach((fortune, index) => {
           const item = document.createElement('div');
           item.className = 'fortune-item';
           item.setAttribute('data-fortune', fortune);
           item.textContent = fortune;
-          item.setAttribute('data-index', r * omikujiResults.length + index); // デバッグ用
+          item.setAttribute('data-index', r * omikujiResults.length + index);
+          item.setAttribute('data-set', r); // どのセットかを記録
           dial.appendChild(item);
         });
       }
       
-      // 初期位置を必ず0に設定
+      // 初期位置を設定（最初の項目が中央に来るように）
       dial.style.transform = 'translateY(0px)';
-      updateDebugInfo('初期化完了', 0);
+      /*updateDebugInfo('初期化完了', 0);*/
     }
 
     // デバッグ情報を更新
@@ -175,6 +234,14 @@
 
     // おみくじを引く処理
     drawButton.addEventListener('click', function() {
+      // 前回の選択状態をクリア
+      document.querySelectorAll('.fortune-item.selected').forEach(item => {
+        item.classList.remove('selected');
+      });
+
+      // 前回の結果オーバーレイを隠す
+      hideResultInDial();
+
       if (isFirstDraw) {
         // 初回：ダイアルを表示してボタンを隠す
         dial.classList.add('visible');
@@ -198,7 +265,7 @@
     function resetDialPosition() {
       dial.classList.remove('spinning');
       dial.style.transform = 'translateY(0px)';
-      updateDebugInfo('位置リセット', 0);
+      /*updateDebugInfo('位置リセット', 0);*/
     }
 
     function startDrawing() {
@@ -208,26 +275,26 @@
       
       // ランダムな結果を選択
       const selectedFortune = omikujiResults[Math.floor(Math.random() * omikujiResults.length)];
-      updateDebugInfo('選択された運勢', selectedFortune);
+      /*updateDebugInfo('選択された運勢', selectedFortune);*/
       
       // 回転アニメーション開始
       startSpinAnimation(selectedFortune);
     }
 
     function startSpinAnimation(targetFortune) {
-      // 安全な位置計算
+      // アイテムの高さ
       const itemHeight = 80;
-      const totalSets = 5;
       
-      // 最後のセット（4番目、0から数えて）の目標運勢を選択
-      const targetSetIndex = 3; // 4番目のセット
+      // 最終セット（表示用）のインデックスを計算
+      const finalSetIndex = 6; // 7番目のセット（0から数えて6）を使用
       const fortuneIndex = omikujiResults.indexOf(targetFortune);
-      const targetItemIndex = targetSetIndex * omikujiResults.length + fortuneIndex;
+      const targetItemIndex = finalSetIndex * omikujiResults.length + fortuneIndex;
       
-         // 最終位置を計算（ダイアル中央に目標運勢が来るように）
-      const finalPosition = -(targetItemIndex * itemHeight);
+      // 最終位置を計算（目標の運勢がダイアル中央に来るように）
+      // ダイアル中央は container の高さ(80px)の半分なので、40px分上にずらす
+      const finalPosition = -(targetItemIndex * itemHeight) + 40;
       
-      updateDebugInfo(`回転開始 - 目標: ${targetFortune}`, finalPosition);
+      /*updateDebugInfo(`回転開始 - 目標: ${targetFortune} (インデックス: ${targetItemIndex})`, finalPosition);*/
       
       // アニメーション開始
       setTimeout(() => {
@@ -237,6 +304,16 @@
         // アニメーション終了後の処理
         setTimeout(() => {
           dial.classList.remove('spinning');
+          
+          // 選択された項目に強調スタイルを追加
+          const selectedItems = document.querySelectorAll(`[data-index="${targetItemIndex}"]`);
+          selectedItems.forEach(item => {
+            item.classList.add('selected');
+          });
+          
+          // ダイアル部分に結果を表示
+          showResultInDial(targetFortune);
+          
           drawButton.disabled = false;
           drawButton.style.display = 'inline-block';
           drawButton.textContent = '🔄 引き直す';
@@ -244,7 +321,7 @@
           
           // 結果に応じた色を適用
           resultElement.style.color = getFortuneColor(targetFortune);
-          updateDebugInfo('アニメーション完了', finalPosition);
+          /*updateDebugInfo(`アニメーション完了 - ${targetFortune}表示中`, finalPosition);*/
         }, 3000);
       }, 100);
     }
@@ -261,6 +338,22 @@
         '大凶': '#2c3e50'
       };
       return colors[fortune] || '#2c3e50';
+    }
+
+    // ダイアル部分に結果を表示する関数
+    function showResultInDial(fortune) {
+      const resultOverlay = document.getElementById('resultOverlay');
+      const fortuneDisplay = document.getElementById('fortuneDisplay');
+      
+      fortuneDisplay.textContent = fortune;
+      fortuneDisplay.style.color = getFortuneColor(fortune);
+      resultOverlay.classList.add('show');
+    }
+
+    // 結果オーバーレイを隠す関数
+    function hideResultInDial() {
+      const resultOverlay = document.getElementById('resultOverlay');
+      resultOverlay.classList.remove('show');
     }
 
     // ページ読み込み時にダイアルを初期化（非表示状態で）

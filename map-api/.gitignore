@@ -1,0 +1,9 @@
+ # APIキー設定ファイルを除外
+js/config.js
+
+# その他の除外ファイル
+.env
+*.log
+node_modules/
+.DS_Store
+Thumbs.db

@@ -8,37 +8,30 @@
     <!-- ここに Mapbox の JavascriptAPI と css を読み込むコードを書きます -->
     <script src="https://api.mapbox.com/mapbox-gl-js/v3.12.0/mapbox-gl.js"></script>
     <link href="https://api.mapbox.com/mapbox-gl-js/v3.12.0/mapbox-gl.css" rel="stylesheet" />
-    
-    <style>
-      /* ここにCSSを書きます */
-      body {
-        margin: 0;
-        padding: 0;
-      }
-      
-      #map {
-        position: absolute;
-        top: 0;
-        bottom: 0;
-        width: 100%;
-      }
-    </style>
-  </head>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
 
   <body>
     <!-- ここにhtmlとjavascript書いていきます -->
+    <div id="search-widget">
+        <input type="text" id="search-term" placeholder="Enter a location">
+        <button id="search-button">Search Hotels</button>
+    </div>
     <div id="map"></div>
     
+    <!-- APIキー設定ファイルを最初に読み込む -->
+    <script src="js/config.js"></script>
+    <script src="js/scripts.js"></script>
     <script>
-      mapboxgl.accessToken = 'pk.eyJ1IjoieXV1aWNuYWsiLCJhIjoiY21iaGdic3FuMGE2ZzJyc2J6aTc4cnBrOSJ9.AnuWoZlbGxnIETSnk8f2Vg';
-
-      // 東京都庁を表示。Degree形式：35.6895014, 139.6917337。zoomの値が大きいほどズームインする方向。
-      var map = new mapboxgl.Map({
-        container: 'map',
-        style: 'mapbox://styles/mapbox/outdoors-v11',
-        center: [35.6895014, 139.6917337],
-        zoom: 10
-      });
+        // Google Maps APIを動的に読み込む
+        function loadGoogleMapsAPI() {
+            const script = document.createElement('script');
+            script.src = `https://maps.googleapis.com/maps/api/js?key=${API_CONFIG.GOOGLE_MAPS_API_KEY}&libraries=places&callback=initMap`;
+            script.async = true;
+            document.head.appendChild(script);
+        }
+        // Google Maps APIを読み込む
+        loadGoogleMapsAPI();
     </script>
   </body>
 </html>
